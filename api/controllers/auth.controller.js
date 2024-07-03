@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
+    console.log(req.body);
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
       data: {
@@ -24,9 +25,9 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
-
+    console.log(req.body);
     const user = await prisma.user.findUnique({
-      where: { username: username },
+      where: { username },
     });
 
     if (!user) return res.status(401).json({ message: "Invalid credentials!" });
