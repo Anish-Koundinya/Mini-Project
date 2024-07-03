@@ -13,17 +13,22 @@ const CertificateStorage = { abi };
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:7545"));
+const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
 
-const contractAddress = "0xf0cc5F2c54247944C6163BDcF7930e3B678a1bf1"; // Replace with your deployed contract address
+const contractAddress = "0x87F04E9B5F0b0033194d3949af57aeA2603A7761"; // Replace with your deployed contract address
 const certificateStorage = new web3.eth.Contract(
   CertificateStorage.abi,
   contractAddress
 );
 
 // Function to store certificate hash in blockchain
-const storeCertificateHash = async (certificateData) => {
-  const hash = keccak256(certificateData).toString("hex");
+const storeCertificateHash = async (userId, certificateData) => {
+  const certificateDataBuffer = Buffer.from(certificateData, "base64"); // Convert to Buffer
+  const combinedBuffer = Buffer.concat([
+    Buffer.from(`${userId}`),
+    certificateDataBuffer,
+  ]);
+  const hash = keccak256(combinedBuffer).toString("hex"); // Generate hash from combined Buffer
   const accounts = await web3.eth.getAccounts();
   await certificateStorage.methods
     .storeCertificateHash(`0x${hash}`)
@@ -56,7 +61,11 @@ const generateCertificates = async (userId) => {
     Jimp.MIME_PNG
   );
   //contract call
-  const certificateHash = await storeCertificateHash(certificateDataBuffer);
+  const certificateHash = await storeCertificateHash(
+    user.id,
+    certificateDataBuffer
+  );
+  console.log(certificateHash);
 
   // Display hash on the certificate (optional)
   const hashFont = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
@@ -109,9 +118,9 @@ export const generateCertificate = async (req, res) => {
     try {
       await generateCertificates(user.id);
       console.log(`Generated certificates for user ${user.name}`);
-      // res
-      //   .status(200)
-      //   .json({ message: "Successfully Certificates Generated!!" });
+      res
+        .status(200)
+        .json({ message: "Successfully Certificates Generated!!" });
     } catch (error) {
       console.error(
         `Error generating certificate for user ${user.name}:`,

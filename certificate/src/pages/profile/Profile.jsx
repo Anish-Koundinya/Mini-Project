@@ -3,7 +3,6 @@ import apiRequest from "../../lib/apiRequest.js";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext.jsx";
-import List from "../../components/list/List.jsx";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -40,13 +39,6 @@ const Profile = () => {
             </span>
             <button onClick={handleLogOut}>Logout</button>
           </div>
-          <div className="title">
-            <h1>My List</h1>
-            <Link to={"/generate"}>
-              <button>Upload New File</button>
-            </Link>
-          </div>
-          <List />
         </div>
       </div>
       <div className="sideContainer"></div>

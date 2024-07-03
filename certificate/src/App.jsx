@@ -6,6 +6,7 @@ import Login from "./pages/login/Login";
 import Generate from "./pages/generate/Generate";
 import Validate from "./pages/validate/Validate";
 import Profile from "./pages/profile/Profile";
+import ProfileUpdate from "./pages/profileUpdate/ProfileUpdate";
 
 const App = () => {
   const router = createBrowserRouter([
@@ -42,6 +43,10 @@ const App = () => {
         {
           path: "/profile",
           element: <Profile />,
+        },
+        {
+          path: "/profile/update",
+          element: <ProfileUpdate />,
         },
       ],
     },
