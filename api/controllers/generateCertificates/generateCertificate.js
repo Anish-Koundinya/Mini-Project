@@ -7,6 +7,7 @@ import nodemailer from "nodemailer";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import QRCode from "qrcode";
 import abi from "../../abis/CertificateStorage.json" assert { type: "json" };
 const CertificateStorage = { abi };
 
@@ -15,7 +16,7 @@ const __dirname = path.dirname(__filename);
 
 const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
 
-const contractAddress = "0x87F04E9B5F0b0033194d3949af57aeA2603A7761"; // Replace with your deployed contract address
+const contractAddress = "0x3f0CCA70c0E68CAE7332D529e3868503c0E70f6c"; // Replace with your deployed contract address
 const certificateStorage = new web3.eth.Contract(
   CertificateStorage.abi,
   contractAddress
@@ -49,32 +50,31 @@ const generateCertificates = async (userId) => {
   const font = await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK);
 
   const namePositionY = 600; // Adjusted position of the name
-  const nameText = certificateTemplate.print(
-    font,
-    900,
-    namePositionY,
-    user.name
-  );
+  certificateTemplate.print(font, 900, namePositionY, user.name);
 
   // Generate and store certificate hash
   const certificateDataBuffer = await certificateTemplate.getBufferAsync(
     Jimp.MIME_PNG
   );
-  //contract call
   const certificateHash = await storeCertificateHash(
     user.id,
     certificateDataBuffer
   );
   console.log(certificateHash);
 
-  // Display hash on the certificate (optional)
-  const hashFont = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
-  certificateTemplate.print(
-    hashFont,
-    100,
-    1300,
-    `Certificate Hash: ${certificateHash}`
+  // Generate QR code with embedded data
+  const qrData = {
+    hash: certificateHash,
+    userId: user.id,
+    issuedAt: new Date().toISOString(),
+  };
+  const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData));
+  const qrCodeImage = await Jimp.read(
+    Buffer.from(qrCodeDataURL.split(",")[1], "base64")
   );
+
+  // Add QR code to the certificate
+  certificateTemplate.composite(qrCodeImage.resize(200, 200), 100, 1100);
 
   const outputPath = path.join(__dirname, `certificate-${user.id}.png`);
   await certificateTemplate.writeAsync(outputPath);
@@ -132,21 +132,26 @@ export const generateCertificate = async (req, res) => {
 };
 
 export const verifyCertificate = async (req, res) => {
-  const { hashKey } = req.body;
-  console.log("fyvuhg", hashKey);
+  const { hash, userId, issuedAt } = req.body;
+  console.log(req.body);
 
   try {
     const isValid = await certificateStorage.methods
-      .verifyCertificateHash(`${hashKey}`)
+      .verifyCertificateHash(`${hash}`)
       .call();
+
     if (isValid) {
-      console.log("Valid");
-      res
-        .status(200)
-        .json({ message: "Successfully to verified certificates!!" });
+      const user = await prisma.excel.findUnique({ where: { id: userId } });
+      if (user && new Date(issuedAt) < new Date()) {
+        // Additional check for issued date
+        res
+          .status(200)
+          .json({ message: "Successfully verified certificate!!" });
+      } else {
+        res.status(403).json({ message: "Failed to verify certificate!!" });
+      }
     } else {
-      res.status(403).json({ message: "Failed to verify certificates!!" });
-      console.log("Not valid");
+      res.status(403).json({ message: "Failed to verify certificate!!" });
     }
   } catch (error) {
     console.error("Error verifying certificate:", error);

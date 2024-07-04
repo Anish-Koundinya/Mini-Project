@@ -1,41 +1,50 @@
 import { useState } from "react";
 import "./validate.scss";
 import apiRequest from "../../lib/apiRequest";
+import QrScanner from "react-qr-scanner";
 
 function Validate() {
-  const [hashKey, setHashKey] = useState("");
   const [isValid, setIsValid] = useState(false);
   const [err, setErr] = useState("");
 
-  const handleHashKeyChange = (event) => {
-    setHashKey(event.target.value);
+  const handleScan = async (data) => {
+    if (data) {
+      try {
+        const parsedData = JSON.parse(data.text);
+        const res = await apiRequest.post(
+          "/generate/verifyCertificate",
+          parsedData
+        );
+        setIsValid(true);
+        setErr("");
+      } catch (error) {
+        setIsValid(false);
+        setErr("Certificate is not valid!!");
+      }
+    }
   };
 
-  const handleValidate = async () => {
-    try {
-      console.log(hashKey);
-      const res = await apiRequest.post("/generate/verifyCertificate", {
-        hashKey,
-      });
-
-      setIsValid(true);
-    } catch (error) {
-      setErr("Certificate is not valid");
-    }
+  const handleError = (err) => {
+    console.error(err);
   };
 
   return (
     <div className="container">
       <div className="validate">
         <h1>Certificate Validator</h1>
-        <input
-          type="text"
-          value={hashKey}
-          onChange={handleHashKeyChange}
-          placeholder="Enter hash key"
-        />
-        <button onClick={handleValidate}>Validate</button>
-        {isValid ? <p>Certificate is valid!</p> : <p>{err}</p>}
+        <div className="qr-reader">
+          <QrScanner
+            delay={300}
+            onError={handleError}
+            onScan={handleScan}
+            style={{ width: "80%" }}
+          />
+        </div>
+        {isValid ? (
+          <p className="text">Certificate is valid!!</p>
+        ) : (
+          <p className="text">{err}</p>
+        )}
       </div>
       <div className="sideContainer"></div>
     </div>
